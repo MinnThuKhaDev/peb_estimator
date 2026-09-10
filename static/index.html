@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PEB Estimate Assistant</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<div class="shell">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">PEB</div>
+      <div>
+        <div class="brand-title">Estimate Assistant</div>
+        <div class="brand-sub">offline / draft tool</div>
+      </div>
+    </div>
+
+    <nav class="side-nav">
+      <button class="nav-item active" data-tab="estimate">
+        <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 9h8M8 13h8M8 17h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span>New Estimate</span>
+      </button>
+      <button class="nav-item" data-tab="history">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v5l3 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span>Historical Projects</span>
+        <span class="count-pill" id="histCount">0</span>
+      </button>
+      <button class="nav-item" data-tab="drawing">
+        <svg viewBox="0 0 24 24"><path d="M3 20h18M6 20V9l6-5 6 5v11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        <span>Drawing Preview</span>
+      </button>
+      <button class="nav-item" data-tab="ai">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span>AI Assistant</span>
+      </button>
+      <button class="nav-item" data-tab="about">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 8h.01M11 12h1v5h1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span>About &amp; Method</span>
+      </button>
+      <button class="nav-item" data-tab="account">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        <span>Account &amp; 2FA</span>
+      </button>
+      <button class="nav-item" data-tab="admin" id="adminNavItem" style="display:none">
+        <svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        <span>Admin: Users</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="db-status" id="dbStatus">Connecting to database…</div>
+      <div id="whoAmI" style="font-size:12px;color:var(--muted);margin-top:6px"></div>
+      <button class="btn link" id="logoutBtn" onclick="doLogout()" style="margin-top:4px">Log out</button>
+    </div>
+  </aside>
+
+  <main class="content">
+
+    <div class="banner">
+      <strong>Preliminary estimate only — not for construction.</strong>
+      Every output here is a draft for your engineer to review and approve. This tool does not
+      perform wind/seismic analysis, member design, or connection design, and does not read DWG files.
+    </div>
+
+    <!-- ===================== TAB: ESTIMATE ===================== -->
+    <section class="tab active" id="tab-estimate">
+
+      <div class="card">
+        <h2>Step 1 — Offline file parse (optional)</h2>
+        <label>Upload a PIF / Estimate worksheet, or a DWG/DXF drawing to attach for reference (.xlsx, .pdf, .txt, .dwg, .dxf) — regex field-scan is offline; DWG is stored only, not parsed</label>
+        <input type="file" id="offlineFile" accept=".xlsx,.xls,.pdf,.txt,.csv,.dwg,.dxf">
+        <div class="actions"><button class="btn secondary" onclick="parseOffline()">Scan file for fields</button></div>
+        <div class="note" id="offlineStatus"></div>
+      </div>
+
+      <div class="card">
+        <h2>Step 2 — Building parameters</h2>
+        <div class="grid">
+          <div class="field"><label>Project / building name</label><input type="text" id="name" value="New Project"></div>
+          <div class="field"><label>Frame type (e.g. CS, MS1)</label><input type="text" id="frame_type" value="CS"></div>
+          <div class="field"><label>Width, out-to-out (m)</label><input type="number" id="width" value="45.72" step="0.01"></div>
+          <div class="field"><label>Length (m)</label><input type="number" id="length" value="60" step="0.01"></div>
+          <div class="field"><label>Eave height (m)</label><input type="number" id="eave_height" value="9" step="0.01"></div>
+          <div class="field"><label>Number of bays</label><input type="number" id="bay_count" value="8" step="1" min="1"></div>
+          <div class="field"><label>Roof slope, rise : run</label>
+            <div class="row-inline"><input type="number" id="slope_rise" value="1.5" step="0.1"><span>:</span><input type="number" id="slope_run" value="10" step="0.1"></div>
+          </div>
+          <div class="field"><label>Wind speed (km/h, 3‑sec gust)</label><input type="number" id="wind_speed" value="130" step="1"></div>
+          <div class="field"><label>Roof live load (kN/m²)</label><input type="number" id="live_load" value="0.57" step="0.01"></div>
+          <div class="field"><label>Collateral load (kN/m²)</label><input type="number" id="collateral" value="0.1" step="0.01"></div>
+          <div class="field"><label>Seismic zone</label><input type="text" id="seismic_zone" value="Zone 3"></div>
+          <div class="field"><label>Occupancy category</label>
+            <select id="occupancy"><option>I</option><option selected>II</option><option>III</option><option>IV</option></select>
+          </div>
+          <div class="field"><label>Enclosure</label>
+            <select id="enclosure"><option>Open</option><option>Partially Enclosed</option><option selected>Enclosed</option></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Step 3 — Special items</h2>
+
+        <div class="check-row"><input type="checkbox" id="has_mezz"><label for="has_mezz">Mezzanine / platform</label></div>
+        <div class="subgrid" id="mezzGrid">
+          <div class="field"><label>Mezzanine floor area (m²)</label><input type="number" id="mezz_area" value="0" step="1"></div>
+          <div class="field"><label>Assumed rate (kg/m²)</label><input type="number" id="mezz_rate" value="45" step="1"></div>
+        </div>
+
+        <div class="check-row" style="margin-top:12px"><input type="checkbox" id="has_crane"><label for="has_crane">Crane system</label></div>
+        <div class="subgrid" id="craneGrid">
+          <div class="field"><label>Crane capacity (tons)</label><input type="number" id="crane_cap" value="0" step="0.5"></div>
+          <div class="field"><label>Runway length (m)</label><input type="number" id="crane_len" value="0" step="1"></div>
+          <div class="field"><label>Assumed rate (kg per ton·m)</label><input type="number" id="crane_rate" value="3.5" step="0.1"></div>
+        </div>
+
+        <div class="check-row" style="margin-top:12px"><input type="checkbox" id="has_canopy"><label for="has_canopy">Canopy / roof extension</label></div>
+        <div class="subgrid" id="canopyGrid">
+          <div class="field"><label>Canopy area (m²)</label><input type="number" id="canopy_area" value="0" step="1"></div>
+          <div class="field"><label>Assumed rate (kg/m²)</label><input type="number" id="canopy_rate" value="8" step="1"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Step 4 — Main-material breakdown assumption (%)</h2>
+        <p class="note">Averaged from real Estimate Worksheets. Adjust if your jobs run differently — normalized to 100% automatically.</p>
+        <div class="grid">
+          <div class="field"><label>Built-up frames (BU)</label><input type="number" id="pct_bu" value="38"></div>
+          <div class="field"><label>Deep sections / welded (DSW)</label><input type="number" id="pct_dsw" value="11"></div>
+          <div class="field"><label>Secondary members / bracing (SP)</label><input type="number" id="pct_sp" value="9"></div>
+          <div class="field"><label>Purlins &amp; girts (cold-formed)</label><input type="number" id="pct_cf" value="15"></div>
+          <div class="field"><label>Roof + wall sheeting</label><input type="number" id="pct_rs" value="14"></div>
+          <div class="field"><label>Accessories / bolts / trims</label><input type="number" id="pct_acc" value="13"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="flex-between">
+          <h2 style="margin:0">Step 5 — Calculate</h2>
+          <div class="actions">
+            <button class="btn primary" onclick="runEstimate()">Calculate Estimate</button>
+            <button class="btn secondary" id="csvBtn" style="display:none" onclick="downloadCSV()">Download CSV</button>
+            <button class="btn secondary" id="saveHistBtn" style="display:none" onclick="saveCurrentAsHistory()">Save as historical record…</button>
+          </div>
+        </div>
+        <div id="resultsBox"></div>
+      </div>
+    </section>
+
+    <!-- ===================== TAB: HISTORY ===================== -->
+    <section class="tab" id="tab-history">
+      <div class="card">
+        <h2>Historical projects (SQLite database)</h2>
+        <p class="note">The estimator predicts kg/m² by comparing a new building against these records, weighted by
+        similarity in width, eave height, wind speed, live load, and enclosure. Two example records come from your
+        uploaded Estimate Worksheets. Add your own completed jobs' <em>actual</em> weights to improve accuracy — this
+        is stored locally in <code>peb_estimator.db</code>, not sent anywhere.</p>
+        <div id="historyTableWrap"></div>
+      </div>
+    </section>
+
+    <!-- ===================== TAB: DRAWING ===================== -->
+    <section class="tab" id="tab-drawing">
+      <div class="card">
+        <h2>Schematic anchor bolt plan (preview only)</h2>
+        <p class="note">Uses Width / Length / Bay count from the New Estimate tab.</p>
+        <div id="planSvgWrap"></div>
+      </div>
+      <div class="card">
+        <h2>Schematic cross section (preview only)</h2>
+        <div id="sectionSvgWrap"></div>
+      </div>
+      <div class="actions"><button class="btn secondary" onclick="drawSchematics()">Refresh from current form</button></div>
+    </section>
+
+    <!-- ===================== TAB: AI ===================== -->
+    <section class="tab" id="tab-ai">
+      <div class="card">
+        <h2>AI Assistant — draft parameters &amp; notes from any file</h2>
+        <p class="note">Upload a PIF, PPD, or EST file (xlsx, pdf, image, or text). The AI drafts building parameters
+        and a short engineering summary. Requires <code>ANTHROPIC_API_KEY</code> in your local <code>.env</code> file —
+        everything else in this app works without it. Output is always a <strong>DRAFT for your engineer to review</strong>.</p>
+
+        <label>Upload PIF / PPD / EST file</label>
+        <input type="file" id="aiFile" accept=".pdf,.png,.jpg,.jpeg,.xlsx,.xls,.txt,.csv">
+
+        <label style="margin-top:10px">Notes for the AI (optional)</label>
+        <input type="text" id="aiNote" placeholder="e.g. this is Bldg B02, mirror image of B01, add a 5T crane">
+
+        <div class="actions"><button class="btn primary" onclick="sendToAI()">Analyze with AI (draft)</button></div>
+        <div class="note" id="aiStatus"></div>
+        <div id="aiOutput" style="margin-top:14px"></div>
+      </div>
+    </section>
+
+    <!-- ===================== TAB: ABOUT ===================== -->
+    <section class="tab" id="tab-about">
+      <div class="card">
+        <h2>How this works</h2>
+        <p><strong>1. Weight prediction.</strong> Inverse-distance-weighted nearest neighbours over your historical
+        projects (width, eave height, wind speed, live load, enclosure) predict a kg/m² rate; multiplied by area for
+        the base weight. With no history, a rule-of-thumb formula is used instead.</p>
+        <p><strong>2. Special items.</strong> Mezzanine, crane and canopy weight are added using simple per-unit rates
+        you can edit — not derived from load analysis.</p>
+        <p><strong>3. Category split.</strong> Base weight is divided into Built-up / Deep-section / Secondary members
+        / Purlins &amp; girts / Sheeting / Accessories using your percentages.</p>
+        <p><strong>4. Drawing preview.</strong> A schematic anchor-bolt grid and cross-section from your basic
+        dimensions, for visual sanity-checking only.</p>
+        <h2>What this deliberately does not do</h2>
+        <ul>
+          <li>No wind/seismic load-combination analysis or joint reactions</li>
+          <li>No member sizing, deflection checks, or connection design</li>
+          <li>No DWG parsing</li>
+          <li>No generation of certified/stamped drawings</li>
+        </ul>
+        <p>Everything here is meant to speed up early budgeting before your engineering team runs the real structural
+        design in your normal software, and before a licensed engineer reviews and approves it.</p>
+      </div>
+    </section>
+
+    <!-- ===================== TAB: ACCOUNT & 2FA ===================== -->
+    <section class="tab" id="tab-account">
+      <div class="card">
+        <h2>Two-factor authentication</h2>
+        <p class="note">Adds a 6-digit code (from an app like Google Authenticator / Authy) on top of your password.</p>
+        <div id="twofaStatus" class="note">Checking status…</div>
+        <div class="actions">
+          <button class="btn secondary" id="setup2faBtn" onclick="start2FASetup()">Set up 2FA</button>
+          <button class="btn secondary" id="disable2faBtn" onclick="disable2FA()" style="display:none">Disable 2FA</button>
+        </div>
+        <div id="twofaSetupBox" style="display:none;margin-top:14px">
+          <p>1. Scan this QR code in your authenticator app:</p>
+          <img id="twofaQr" style="border:1px solid var(--border);border-radius:8px" width="200" height="200">
+          <p style="margin-top:8px">2. Or enter this key manually: <code id="twofaSecret"></code></p>
+          <p style="margin-top:8px">3. Enter the 6-digit code it shows to confirm:</p>
+          <input type="text" id="twofaConfirmCode" maxlength="6" placeholder="123456" style="width:120px">
+          <button class="btn primary" onclick="confirm2FA()">Confirm &amp; enable</button>
+          <div class="note" id="twofaConfirmStatus"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== TAB: ADMIN (users) ===================== -->
+    <section class="tab" id="tab-admin">
+      <div class="card">
+        <h2>Create a new account</h2>
+        <div class="grid">
+          <div class="field"><label>Username</label><input type="text" id="newUserName"></div>
+          <div class="field"><label>Password (min 8 chars)</label><input type="password" id="newUserPass"></div>
+          <div class="field"><label>Role</label>
+            <select id="newUserAdmin"><option value="false" selected>Standard user</option><option value="true">Admin</option></select>
+          </div>
+        </div>
+        <div class="actions"><button class="btn primary" onclick="createUser()">Create account</button></div>
+        <div class="note" id="createUserStatus"></div>
+      </div>
+      <div class="card">
+        <h2>Existing accounts</h2>
+        <div id="usersTableWrap"><p class="note">Loading…</p></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- =================================================================== -->
+<!-- Login Modal Overlay — blocks the whole app until authenticated      -->
+<!-- =================================================================== -->
+<div id="loginModal" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 10001; padding: 20px; box-sizing: border-box;">
+  <div style="background:#fff; max-width:380px; width:100%; border-radius:10px; padding:28px; box-shadow:0 8px 30px rgba(0,0,0,0.3); font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    <h2 style="margin:0 0 4px;font-size:1.25rem;color:#111827;">PEB Estimate Assistant</h2>
+    <p style="margin:0 0 18px;font-size:0.85rem;color:#6b7280">Sign in to continue</p>
+    <label style="font-size:0.8rem;font-weight:600;color:#374151">Username</label>
+    <input id="loginUser" type="text" style="width:100%;padding:9px;margin:4px 0 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box" autocomplete="username">
+    <label style="font-size:0.8rem;font-weight:600;color:#374151">Password</label>
+    <input id="loginPass" type="password" style="width:100%;padding:9px;margin:4px 0 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box" autocomplete="current-password">
+    <div id="login2faRow" style="display:none">
+      <label style="font-size:0.8rem;font-weight:600;color:#374151">2FA code</label>
+      <input id="loginTotp" type="text" maxlength="6" placeholder="123456" style="width:100%;padding:9px;margin:4px 0 12px;border:1px solid #d1d5db;border-radius:6px;box-sizing:border-box">
+    </div>
+    <button id="loginBtn" onclick="doLogin()" style="width:100%;padding:11px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:0.95rem;font-weight:600;cursor:pointer">Sign in</button>
+    <div id="loginError" style="margin-top:10px;font-size:0.82rem;color:#c0392b"></div>
+  </div>
+</div>
+
+<!-- =================================================================== -->
+<!-- Terms & Conditions Disclaimer Modal Overlay                         -->
+<!-- =================================================================== -->
+<div id="termsModal" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 20px; box-sizing: border-box;">
+  <div style="background: #ffffff; max-width: 680px; width: 100%; max-height: 85vh; border-radius: 10px; padding: 25px; display: flex; flex-direction: column; box-shadow: 0 8px 30px rgba(0,0,0,0.3); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+    
+    <h2 style="margin: 0 0 10px 0; font-size: 1.25rem; color: #111827;">Terms & Conditions / စည်းမျဉ်းများနှင့် သတ်မှတ်ချက်များ</h2>
+    <hr style="border: 0; border-top: 1px solid #e5e7eb; margin-bottom: 15px;">
+
+    <!-- Scrollable Terms Content -->
+    <div style="overflow-y: auto; padding-right: 12px; margin-bottom: 20px; font-size: 0.875rem; line-height: 1.6; color: #374151;">
+      
+      <p style="margin-top: 0;"><strong>1. Preliminary Nature of Estimates / ကြိုတင်ခန့်မှန်းချက် အဆင့်သာဖြစ်ခြင်း</strong></p>
+      <p style="margin-top: 2px;"><strong>[EN]</strong> All calculations, structural weight predictions, and reports generated by this software are preliminary estimates provided strictly for informational and budgeting purposes. They do not constitute final engineering documents and must not be used directly for construction, fabrication, or procurement.</p>
+      <p style="margin-bottom: 15px;"><strong>[MM]</strong> ဤ Software မှ ထုတ်ပေးသော တွက်ချက်မှုများ၊ သံအလေးချိန် ခန့်မှန်းချက်များနှင့် အစီရင်ခံစာများအားလုံးသည် ကနဦး ကုန်ကျစရိတ် ခန့်မှန်းရန်နှင့် ဗဟုသုတအဖြစ် လေ့လာရန်အတွက်သာ ဖြစ်သည်။ ၎င်းတို့သည် အတည်ပြုပြီးသား အင်ဂျင်နီယာ ဒီဇိုင်းစာရွက်စာတမ်းများ မဟုတ်ပါသဖြင့် ဆောက်လုပ်ရေးလုပ်ငန်းများ၊ ပစ္စည်းမှာယူခြင်းများနှင့် တည်ဆောက်ထုတ်လုပ်ခြင်းများတွင် တိုက်ရိုက် အသုံးပြုခြင်း မပြုရ။</p>
+
+      <p><strong>2. Exclusion of Structural Analysis / အင်ဂျင်နီယာ ဒီဇိုင်းတွက်ချက်မှုများ မပါဝင်ခြင်း</strong></p>
+      <p style="margin-top: 2px;"><strong>[EN]</strong> This software does not perform wind load analysis, seismic load analysis, structural member capacity design, or connection design, nor does it read CAD/DWG files. It is solely an estimation tool and is not a substitute for comprehensive structural engineering analysis software.</p>
+      <p style="margin-bottom: 15px;"><strong>[MM]</strong> ဤ Software သည် လေဒဏ် ခံနိုင်ရည်တွက်ချက်ခြင်း (Wind Analysis)၊ ငလျင်ဒဏ် ခံနိုင်ရည်တွက်ချက်ခြင်း (Seismic Analysis)၊ သံဘောင်နှင့် ဆက်ကြောင်းဒီဇိုင်းတွက်ချက်ခြင်း (Member/Connection Design) များကို ဆောင်ရွက်ပေးမည် မဟုတ်သလို DWG/CAD ဖိုင်များကိုလည်း ဖတ်ရှုနိုင်မည် မဟုတ်ပါ။ ဤသည်မှာ ကုန်ကျစရိတ် ခန့်မှန်းတွက်ချက်သည့် Tool တစ်ခုသာဖြစ်ပြီး အသေးစိတ် Structural Engineering Design Software များကို အစားထိုးနိုင်ခြင်း မရှိပါ။</p>
+
+      <p><strong>3. Mandatory Professional Review / ကျွမ်းကျင်ပညာရှင်များ၏ ပြန်လည်စစ်ဆေး အတည်ပြုရန် လိုအပ်ခြင်း</strong></p>
+      <p style="margin-top: 2px;"><strong>[EN]</strong> All calculations, reports, and estimates generated by this application are preliminary drafts. All outputs rely on generalized algorithms and must be thoroughly reviewed, verified, and approved by a qualified professional engineer before being used for design, procurement, or construction.</p>
+      <p style="margin-bottom: 15px;"><strong>[MM]</strong> ဤ Software မှ ထုတ်ပေးသော ရလဒ်များ၊ တွက်ချက်မှုများနှင့် အစီရင်ခံစာများအားလုံးသည် အကြမ်း (Draft) အဆင့်သာ ဖြစ်သည်။ သို့ဖြစ်ပါ၍ လုပ်ငန်းခွင်တွင် အသုံးမပြုမီ၊ ပစ္စည်းမှာယူခြင်းနှင့် တည်ဆောက်ခြင်းများ မပြုလုပ်မီ ကျွမ်းကျင်ပညာရှင် (လိုင်စင်ရ အင်ဂျင်နီယာ) များ၏ ပြန်လည်စစ်ဆေး အတည်ပြုချက်ကို မဖြစ်မနေ ရယူရန် လိုအပ်ပါသည်။</p>
+
+      <p><strong>4. Free Tool & Limitation of Liability / အခမဲ့သုံး ကိရိယာဖြစ်ခြင်းနှင့် တာဝန်ယူမှု ကင်းလွတ်ခွင့်</strong></p>
+      <p style="margin-top: 2px;"><strong>[EN]</strong> As this software is provided as a <b>Free Tool</b>, the developers, designers, and distributors assume <b>no liability whatsoever</b> for any direct, indirect, incidental, or consequential damages—including but not limited to structural failures, financial losses, procurement errors, or operational delays—resulting from the use of, or reliance upon, the output and calculations generated by this application.</p>
+      <p style="margin-bottom: 0;"><strong>[MM]</strong> ဤ Software သည် <b>အခမဲ့ ပံ့ပိုးပေးထားသော ကိရိယာ (Free Tool)</b> တစ်ခုသာ ဖြစ်သဖြင့်၊ ၎င်းမှ ထုတ်ပေးသော ရလဒ်များ၊ တွက်ချက်မှုများနှင့် ခန့်မှန်းချက်များကို အသုံးချခြင်း သို့မဟုတ် မှီခိုအားထားခြင်းကြောင့် ဖြစ်ပေါ်လာသည့် မည်သည့် တိုက်ရိုက် သို့မဟုတ် သွယ်ဝိုက်သော ဝယ်ယူမှု ဆုံးရှုံးခြင်း၊ အဆောက်အအုံ ထိခိုက်ပျက်စီးခြင်း၊ ဘဏ္ဍာရေး ပျက်စီးဆုံးရှုံးခြင်းများနှင့် လုပ်ငန်းစဉ် ကြန့်ကြာမှုများအတွက် <b>Software တည်ဆောက်သူများ၊ ဒီဇိုင်နာများနှင့် ဖြန့်ချိသူများတွင် လုံးဝ (လုံးဝ) တာဝန်မရှိပါ။</b></p>
+    </div>
+
+    <!-- Checkbox & Submit Action -->
+    <div style="border-top: 1px solid #e5e7eb; padding-top: 15px;">
+      <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.875rem; font-weight: 600; color: #111827;">
+        <input type="checkbox" id="agreeCheckbox" onchange="toggleAgreeButton()" style="width: 18px; height: 18px; margin-top: 2px; cursor: pointer;">
+        <span>I have read and agree to the Terms & Conditions / စည်းမျဉ်းများကို ဖတ်ရှုပြီး သဘောတူပါသည်</span>
+      </label>
+
+      <button id="agreeBtn" onclick="acceptTerms()" disabled style="margin-top: 15px; width: 100%; padding: 12px; background: #9ca3af; color: #ffffff; border: none; border-radius: 6px; font-size: 0.95rem; font-weight: 600; cursor: not-allowed; transition: background 0.2s ease;">
+        Agree & Continue / လက်ခံ၍ ဆက်သွားမည်
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- Terms Modal Logic -->
+<script>
+  function toggleAgreeButton() {
+    const checkbox = document.getElementById('agreeCheckbox');
+    const button = document.getElementById('agreeBtn');
+    
+    if (checkbox.checked) {
+      button.disabled = false;
+      button.style.background = '#2563eb';
+      button.style.cursor = 'pointer';
+    } else {
+      button.disabled = true;
+      button.style.background = '#9ca3af';
+      button.style.cursor = 'not-allowed';
+    }
+  }
+
+  function acceptTerms() {
+    localStorage.setItem('peb_estimator_terms_accepted', 'true');
+    document.getElementById('termsModal').style.display = 'none';
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    if (localStorage.getItem('peb_estimator_terms_accepted') === 'true') {
+      document.getElementById('termsModal').style.display = 'none';
+    }
+  });
+</script>
+
+<script src="/static/js/auth.js"></script>
+<script src="/static/js/drawing.js"></script>
+<script src="/static/js/app.js"></script>
+</body>
+</html>
