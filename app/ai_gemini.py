@@ -17,7 +17,7 @@ import requests
 
 from . import file_parser
 
-MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
 INSTRUCTION = """You are drafting a PRELIMINARY, non-certified extraction from a pre-engineered
